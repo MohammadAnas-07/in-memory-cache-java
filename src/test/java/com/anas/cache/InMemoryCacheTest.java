@@ -41,4 +41,45 @@ class InMemoryCacheTest {
         assertTrue(cache.containsKey("user:101"));
         assertFalse(cache.containsKey("user:999"));
     }
+
+    @Test
+    void shouldExpireValueAfterTtl() throws InterruptedException{
+        Cache<String, String> cache = new InMemoryCache<>();
+
+        cache.put("user:101","Anas",200);
+
+        assertEquals("Anas",cache.get("user:101"));
+
+        Thread.sleep(300);
+
+        assertNull(cache.get("user:101"));
+    }
+
+    @Test
+    void shouldReturnFalseForExpiredKey() throws InterruptedException{
+        Cache<String, String> cache = new InMemoryCache<>();
+
+        cache.put("user:101","Anas",200);
+
+        assertTrue(cache.containsKey("user:101"));
+
+        Thread.sleep(300);
+
+        assertFalse(cache.containsKey("user:101"));
+    }
+
+    @Test
+    void shouldRejectInvalidTtl() {
+        Cache<String, String> cache = new InMemoryCache<>();
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> cache.put("user:101","Anas",0)
+        );
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> cache.put("user:102","Rahul",-100)
+        );
+    }
 }
