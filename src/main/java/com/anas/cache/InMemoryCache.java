@@ -3,9 +3,25 @@ package com.anas.cache;
 import java.util.HashMap;
 import java.util.Map;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 public class InMemoryCache<K, V> implements Cache<K, V> {
 
     private final Map<K, CacheEntry<V>> cache = new HashMap<>();
+
+    private final ScheduledExecutorService scheduler =
+            Executors.newSingleThreadScheduledExecutor();
+
+    public InMemoryCache() {
+        scheduler.scheduleAtFixedRate(
+                this::cleanupExpiredEntries,
+                1,
+                1,
+                TimeUnit.SECONDS
+        );
+    }
 
     @Override
     public void put(K key, V value) {
@@ -26,6 +42,10 @@ public class InMemoryCache<K, V> implements Cache<K, V> {
     private boolean isExpired(CacheEntry<V> entry){
         return entry.getExpiresAt() != 0
                 && System.currentTimeMillis() >= entry.getExpiresAt();
+    }
+
+    private void cleanupExpiredEntries() {
+        cache.entrySet().removeIf(entry -> isExpired(entry.getValue()));
     }
 
     @Override
@@ -64,5 +84,10 @@ public class InMemoryCache<K, V> implements Cache<K, V> {
         }
 
         return true;
+    }
+
+    @Override
+    public void close(){
+        scheduler.shutdown();
     }
 }

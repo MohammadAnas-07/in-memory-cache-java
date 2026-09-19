@@ -4,11 +4,25 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+
 class InMemoryCacheTest {
+
+    private Cache<String, String> cache;
+
+    @BeforeEach
+    void setUp() {
+        cache = new InMemoryCache<>();
+    }
+
+    @AfterEach
+    void tearDown(){
+        cache.close();
+    }
 
     @Test
     void shouldStoreAndRetrieveValue() {
-        Cache<String, String> cache = new InMemoryCache<>();
 
         cache.put("user:101", "Anas");
 
@@ -17,16 +31,14 @@ class InMemoryCacheTest {
 
     @Test
     void shouldReturnNullMissingKey(){
-        Cache<String, String> cache = new InMemoryCache<>();
 
         assertNull(cache.get("user:999"));
     }
 
     @Test
     void shouldRemoveValue(){
-        Cache<String, String> cache = new InMemoryCache<>();
 
-        cache.put("user:101","Anas");
+        cache.put("user:101", "Anas");
         cache.remove("user:101");
 
         assertNull(cache.get("user:101"));
@@ -34,7 +46,6 @@ class InMemoryCacheTest {
 
     @Test
     void shouldCheckIfKeyExists(){
-        Cache<String , String> cache = new InMemoryCache<>();
 
         cache.put("user:101","Anas");
 
@@ -44,7 +55,6 @@ class InMemoryCacheTest {
 
     @Test
     void shouldExpireValueAfterTtl() throws InterruptedException{
-        Cache<String, String> cache = new InMemoryCache<>();
 
         cache.put("user:101","Anas",200);
 
@@ -57,7 +67,6 @@ class InMemoryCacheTest {
 
     @Test
     void shouldReturnFalseForExpiredKey() throws InterruptedException{
-        Cache<String, String> cache = new InMemoryCache<>();
 
         cache.put("user:101","Anas",200);
 
@@ -70,7 +79,6 @@ class InMemoryCacheTest {
 
     @Test
     void shouldRejectInvalidTtl() {
-        Cache<String, String> cache = new InMemoryCache<>();
 
         assertThrows(
                 IllegalArgumentException.class,
@@ -81,5 +89,15 @@ class InMemoryCacheTest {
                 IllegalArgumentException.class,
                 () -> cache.put("user:102","Rahul",-100)
         );
+    }
+
+    @Test
+    void shouldAutomaticallyRemoveExpiredEntry() throws InterruptedException {
+
+        cache.put("user:101", "Anas", 200);
+
+        Thread.sleep(1500);
+
+        assertFalse(cache.containsKey("user:101"));
     }
 }
