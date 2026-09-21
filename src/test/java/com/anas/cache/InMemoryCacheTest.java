@@ -13,7 +13,7 @@ class InMemoryCacheTest {
 
     @BeforeEach
     void setUp() {
-        cache = new InMemoryCache<>();
+        cache = new InMemoryCache<>(10);
     }
 
     @AfterEach
@@ -99,5 +99,60 @@ class InMemoryCacheTest {
         Thread.sleep(1500);
 
         assertFalse(cache.containsKey("user:101"));
+    }
+
+    @Test
+    void shouldEvictLeastRecentlyUsedEntryWhenCapacityIsFull() {
+         cache = new InMemoryCache<>(2);
+
+         cache.put("user:101","Anas");
+         cache.put("user:102","Rahul");
+         cache.put("user:103","Aman");
+
+         assertFalse(cache.containsKey("user:101"));
+         assertTrue(cache.containsKey("user:102"));
+         assertTrue(cache.containsKey("user:103"));
+    }
+
+    @Test
+    void shouldEvictLeastRecentlyUsedEntryAfterAccess() {
+
+        cache = new InMemoryCache<>(2);
+
+        cache.put("user:101","Anas");
+        cache.put("user:102","Rahul");
+
+        // Make user:101 recently used
+        assertEquals("Anas", cache.get("user:101"));
+
+        //This should evict user:102
+        cache.put("user:103","Aman");
+
+        assertTrue(cache.containsKey("user:101"));
+        assertFalse(cache.containsKey("user:102"));
+        assertTrue(cache.containsKey("user:103"));
+    }
+
+    @Test
+    void shouldUpdateExistingValueWithoutIncreasingSize() {
+
+        cache = new InMemoryCache<>(2);
+
+        cache.put("user:101", "Anas");
+        cache.put("user:102", "Rahul");
+
+        // Update existing key
+        cache.put("user:101", "Mohammad Anas");
+
+        // Add third entry
+        cache.put("user:103", "Aman");
+
+        // user:102 should be evicted because user:101 was updated recently
+        assertTrue(cache.containsKey("user:101"));
+        assertFalse(cache.containsKey("user:102"));
+        assertTrue(cache.containsKey("user:103"));
+
+        assertEquals("Mohammad Anas", cache.get("user:101"));
+
     }
 }

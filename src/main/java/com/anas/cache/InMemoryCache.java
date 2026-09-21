@@ -1,20 +1,29 @@
 package com.anas.cache;
 
-import java.util.HashMap;
-import java.util.Map;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class InMemoryCache<K, V> implements Cache<K, V> {
 
-    private final Map<K, CacheEntry<V>> cache = new HashMap<>();
+    private final Map<K, CacheEntry<V>> cache = new LinkedHashMap<>(16, 0.75f, true);
 
     private final ScheduledExecutorService scheduler =
             Executors.newSingleThreadScheduledExecutor();
 
-    public InMemoryCache() {
+    private final int capacity;
+
+    public InMemoryCache(int capacity) {
+
+        if(capacity <= 0){
+            throw new IllegalArgumentException("Capacity must be greater than 0");
+        }
+
+        this.capacity = capacity;
+
         scheduler.scheduleAtFixedRate(
                 this::cleanupExpiredEntries,
                 1,
@@ -26,6 +35,8 @@ public class InMemoryCache<K, V> implements Cache<K, V> {
     @Override
     public void put(K key, V value) {
         cache.put(key, new CacheEntry<>(value, 0));
+        cleanupExpiredEntries();
+        evictIfNeeded();
     }
 
     @Override
@@ -37,6 +48,8 @@ public class InMemoryCache<K, V> implements Cache<K, V> {
         long expiresAt = System.currentTimeMillis() + ttlMillis;
 
         cache.put(key, new CacheEntry<>(value, expiresAt));
+        cleanupExpiredEntries();
+        evictIfNeeded();
     }
 
     private boolean isExpired(CacheEntry<V> entry){
@@ -46,6 +59,16 @@ public class InMemoryCache<K, V> implements Cache<K, V> {
 
     private void cleanupExpiredEntries() {
         cache.entrySet().removeIf(entry -> isExpired(entry.getValue()));
+    }
+
+    private void evictIfNeeded(){
+        if(cache.size() <= capacity){
+            return;
+        }
+
+        K oldestKey = cache.keySet().iterator().next();
+
+        cache.remove(oldestKey);
     }
 
     @Override
