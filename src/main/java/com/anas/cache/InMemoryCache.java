@@ -16,6 +16,10 @@ public class InMemoryCache<K, V> implements Cache<K, V> {
 
     private final int capacity;
 
+    private synchronized void runCleanup() {
+        cleanupExpiredEntries();
+    }
+
     public InMemoryCache(int capacity) {
 
         if(capacity <= 0){
@@ -25,7 +29,7 @@ public class InMemoryCache<K, V> implements Cache<K, V> {
         this.capacity = capacity;
 
         scheduler.scheduleAtFixedRate(
-                this::cleanupExpiredEntries,
+                this::runCleanup,
                 1,
                 1,
                 TimeUnit.SECONDS
@@ -33,14 +37,14 @@ public class InMemoryCache<K, V> implements Cache<K, V> {
     }
 
     @Override
-    public void put(K key, V value) {
+    public synchronized void put(K key, V value) {
         cache.put(key, new CacheEntry<>(value, 0));
         cleanupExpiredEntries();
         evictIfNeeded();
     }
 
     @Override
-    public void put(K key, V value, long ttlMillis) {
+    public synchronized void put(K key, V value, long ttlMillis) {
         if (ttlMillis <= 0){
             throw new IllegalArgumentException("TTL must be greater than 0");
         }
@@ -72,7 +76,7 @@ public class InMemoryCache<K, V> implements Cache<K, V> {
     }
 
     @Override
-    public V get(K key) {
+    public synchronized V get(K key) {
         CacheEntry<V> entry = cache.get(key);
 
         if(entry == null) {
@@ -89,12 +93,12 @@ public class InMemoryCache<K, V> implements Cache<K, V> {
     }
 
     @Override
-    public void remove(K key) {
+    public synchronized void remove(K key) {
         cache.remove(key);
     }
 
     @Override
-    public boolean containsKey(K key) {
+    public synchronized boolean containsKey(K key) {
         CacheEntry<V> entry = cache.get(key);
 
         if (entry == null) {
@@ -110,7 +114,12 @@ public class InMemoryCache<K, V> implements Cache<K, V> {
     }
 
     @Override
-    public void close(){
+    public synchronized void close(){
         scheduler.shutdown();
+    }
+
+    @Override
+    public synchronized int size() {
+        return cache.size();
     }
 }

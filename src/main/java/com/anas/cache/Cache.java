@@ -14,4 +14,6 @@ public interface Cache<K, V> {
 
     void close();
 
+    int size();
+
 }
